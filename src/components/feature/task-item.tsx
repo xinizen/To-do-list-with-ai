@@ -8,7 +8,7 @@ import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Task {
-  id: number;
+  id: string;
   text: string;
   completed: boolean;
 }
@@ -16,8 +16,8 @@ interface Task {
 interface TaskItemProps {
   task: Task;
   isPriority: boolean;
-  onToggleComplete: (id: number) => void;
-  onDelete: (id: number) => void;
+  onToggleComplete: (id: string, completed: boolean) => void;
+  onDelete: (id: string) => void;
 }
 
 export const TaskItem: FC<TaskItemProps> = ({
@@ -31,7 +31,7 @@ export const TaskItem: FC<TaskItemProps> = ({
       <Checkbox
         id={`task-${task.id}`}
         checked={task.completed}
-        onCheckedChange={() => onToggleComplete(task.id)}
+        onCheckedChange={() => onToggleComplete(task.id, task.completed)}
         aria-label={`Mark task "${task.text}" as ${
           task.completed ? "incomplete" : "complete"
         }`}

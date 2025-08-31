@@ -9,29 +9,26 @@ import { Plus, WandSparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TaskItem } from "./task-item";
 import { Separator } from "@/components/ui/separator";
+import { db } from "@/lib/firebase";
+import { collection, addDoc, updateDoc, deleteDoc, doc, query, where } from "firebase/firestore";
+import { useCollection } from "react-firebase-hooks/firestore";
 
 interface Task {
-  id: number;
+  id: string;
   text: string;
   completed: boolean;
 }
 
-const initialTasks: Task[] = [
-  { id: 1, text: "Design the user interface mockups", completed: true },
-  { id: 2, text: "Develop the main task management component", completed: false },
-  { id: 3, text: "Integrate Gemini for AI priority suggestions", completed: false },
-  { id: 4, text: "Set up client-side state management", completed: false },
-  { id: 5, text: "Style the application using the chosen color palette", completed: false },
-];
-
 export const TaskManager: FC = () => {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [inputValue, setInputValue] = useState("");
   const [priorities, setPriorities] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
-  const handleAddTask = (e: FormEvent) => {
+  const [tasksSnapshot, loading, error] = useCollection(collection(db, 'tasks'));
+  const tasks = tasksSnapshot?.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task)) || [];
+
+  const handleAddTask = async (e: FormEvent) => {
     e.preventDefault();
     const trimmedInput = inputValue.trim();
     if (!trimmedInput) {
@@ -43,13 +40,17 @@ export const TaskManager: FC = () => {
       return;
     }
 
-    const newTask: Task = {
-      id: Date.now(),
-      text: trimmedInput,
-      completed: false,
-    };
-    setTasks((prev) => [...prev, newTask]);
-    setInputValue("");
+    try {
+      await addDoc(collection(db, "tasks"), { text: trimmedInput, completed: false });
+      setInputValue("");
+    } catch (error) {
+      console.error("Error adding task: ", error);
+      toast({
+        title: "Error",
+        description: "Could not add task. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleGetSuggestions = () => {
@@ -85,16 +86,30 @@ export const TaskManager: FC = () => {
     });
   };
 
-  const handleToggleComplete = (id: number) => {
-    setTasks(
-      tasks.map((task) =>
-        task.id === id ? { ...task, completed: !task.completed } : task
-      )
-    );
+  const handleToggleComplete = async (id: string, completed: boolean) => {
+    try {
+      await updateDoc(doc(db, "tasks", id), { completed: !completed });
+    } catch (error) {
+      console.error("Error toggling task: ", error);
+      toast({
+        title: "Error",
+        description: "Could not update task. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDelete = (id: number) => {
-    setTasks(tasks.filter((task) => task.id !== id));
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "tasks", id));
+    } catch (error) {
+      console.error("Error deleting task: ", error);
+      toast({
+        title: "Error",
+        description: "Could not delete task. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
   
   const uncompletedTasks = tasks.filter(t => !t.completed);
@@ -126,23 +141,24 @@ export const TaskManager: FC = () => {
           </Button>
         </form>
         <div className="mt-6 space-y-2">
-          {uncompletedTasks.length > 0 ? (
+          {loading && <p className="text-center text-sm text-muted-foreground py-4">Loading tasks...</p>}
+          {!loading && uncompletedTasks.length > 0 ? (
             uncompletedTasks.map((task) => (
               <TaskItem
                 key={task.id}
                 task={task}
                 isPriority={priorities.includes(task.text)}
-                onToggleComplete={handleToggleComplete}
-                onDelete={handleDelete}
+                onToggleComplete={() => handleToggleComplete(task.id, task.completed)}
+                onDelete={() => handleDelete(task.id)}
               />
             ))
           ) : (
-             <p className="text-center text-sm text-muted-foreground py-4">All tasks completed! ✨</p>
+             !loading && <p className="text-center text-sm text-muted-foreground py-4">All tasks completed! ✨</p>
           )}
 
           {completedTasks.length > 0 && uncompletedTasks.length > 0 && <Separator className="my-4" />}
 
-          {completedTasks.length > 0 && (
+          {!loading && completedTasks.length > 0 && (
             <>
               <h3 className="text-xs font-semibold uppercase text-muted-foreground px-3 pt-2">Completed</h3>
               {completedTasks.map((task) => (
@@ -150,8 +166,8 @@ export const TaskManager: FC = () => {
                     key={task.id}
                     task={task}
                     isPriority={false}
-                    onToggleComplete={handleToggleComplete}
-                    onDelete={handleDelete}
+                    onToggleComplete={() => handleToggleComplete(task.id, task.completed)}
+                    onDelete={() => handleDelete(task.id)}
                 />
                 ))}
             </>
