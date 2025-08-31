@@ -1,18 +1,19 @@
+// src/lib/firebase.ts
 'use client';
 
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  projectId: 'taskpilot-ai-kbtes',
-  appId: '1:90889312109:web:3ca7cdba51843945d22c64',
-  storageBucket: 'taskpilot-ai-kbtes.firebasestorage.app',
-  apiKey: 'AIzaSyA35S-QVtnvrZVNWr2Le_RTD_2L6XLEu1s',
-  authDomain: 'taskpilot-ai-kbtes.firebaseapp.com',
-  messagingSenderId: '90889312109',
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
 };
 
-// Initialize Firebase
+// Initialize Firebase only if an app instance doesn't already exist
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
